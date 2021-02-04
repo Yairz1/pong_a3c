@@ -5,6 +5,7 @@ import torch
 
 from Algorithm import A3C, num2action
 from Network import Net
+from envs import create_atari_env
 from preprocess import state_process
 from Algorithm import policy
 
@@ -25,12 +26,12 @@ def simulate(env, model):
 
 
 def train():
-    env = gym.make('PongDeterministic-v4')
+    env = create_atari_env('PongDeterministic-v4')
     action_space = 3
     global_model = Net(action_space)
-    gamma = 1
+    gamma = 0.99
     optimizer = torch.optim.Adam(global_model.parameters(), lr=0.1)
-    t_max = 15
+    t_max = 5
     T_max = 1000
     a3c = A3C(env,
               policy,

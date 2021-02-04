@@ -76,6 +76,7 @@ class A3C:
                 H = 0
 
             self.optimizer.zero_grad()
+            local_model.zero_grad()
             (policy_loss + value_loss + H).backward()
             self._async_step(local_model)
             if done: s_t = self.env.reset()
