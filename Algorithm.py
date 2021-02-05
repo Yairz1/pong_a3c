@@ -1,13 +1,13 @@
 import copy
 import threading
-
+import numpy as np
 import torch
-
+import torch.nn.functional as F
 from preprocess import state_process
 
 
 def policy(p):
-    return p.argmax()
+    return np.random.choice([0, 1, 2], 1, p=p.detach().numpy().reshape(-1))[0]
 
 
 def num2action(num):
@@ -16,7 +16,7 @@ def num2action(num):
 
 
 class A3C:
-    def __init__(self, env, policy, model, action_space, t_max, T_max, gamma, optimizer):
+    def __init__(self, env, policy, model, action_space, t_max, T_max, gamma, optimizer, entropy_coef):
         self.global_model = model
         self.action_space = action_space
         self._lock = threading.Lock()
@@ -27,6 +27,7 @@ class A3C:
         self.T_max = T_max
         self.gamma = gamma
         self.optimizer = optimizer
+        self.entropy_coef = entropy_coef
 
     def multi_actor_critic(self):
         # for each thread, execute actor_critic
@@ -73,7 +74,8 @@ class A3C:
 
                 policy_loss += A * torch.log(P_i[0][a_i])
                 value_loss += 0.5 * A.pow(2)
-                H = 0
+                log_P_i = torch.log(P_i)
+                H -= (log_P_i * P_i).sum(1, keepdim=True)
 
             self.optimizer.zero_grad()
             local_model.zero_grad()

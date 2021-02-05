@@ -33,6 +33,7 @@ def train():
     optimizer = torch.optim.Adam(global_model.parameters(), lr=0.1)
     t_max = 5
     T_max = 1000
+    entropy_coef = 0.01
     a3c = A3C(env,
               policy,
               global_model,
@@ -40,7 +41,8 @@ def train():
               t_max,
               T_max,
               gamma,
-              optimizer)
+              optimizer,
+              entropy_coef)
     model = a3c.multi_actor_critic()
 
     simulate(env, model)
