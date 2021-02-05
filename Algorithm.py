@@ -6,13 +6,9 @@ import torch.nn.functional as F
 from preprocess import state_process
 
 
-def policy(p):
-    return np.random.choice([0, 1, 2], 1, p=p.detach().numpy().reshape(-1))[0]
+def policy(p, action_space):
+    return np.random.choice(action_space, 1, p=p.detach().numpy().reshape(-1))[0]
 
-
-def num2action(num):
-    action_map = {0: 0, 1: 2, 2: 5}
-    return action_map[int(num)]
 
 
 class A3C:
@@ -56,8 +52,8 @@ class A3C:
             episode_info = []
             while not done and t - t_start < self.t_max:
                 P_t, v_t = local_model(state_process(s_t))
-                a_t = self.policy(P_t)
-                s_t_1, r_t, done, _ = self.env.step(num2action(a_t))
+                a_t = self.policy(P_t, self.action_space)
+                s_t_1, r_t, done, _ = self.env.step(a_t)
                 t += 1
                 with self._lock:
                     self.T += 1
