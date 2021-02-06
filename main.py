@@ -27,26 +27,27 @@ def simulate(env, model, action_space):
 
 def train():
     env = create_atari_env('PongDeterministic-v4')
-    action_space = 6
-    global_model = Net(action_space)
+    global_model = Net(env.action_space.n)
+    global_model.share_memory()
     gamma = 0.99
     optimizer = torch.optim.Adam(global_model.parameters(), lr=0.01)
-    global_model.share_memory()
     t_max = 5
     T_max = 10000
     entropy_coef = 0.01
+    gae_lambda = 1
     a3c = A3C(env,
               policy,
               global_model,
-              action_space,
+              env.action_space.n,
               t_max,
               T_max,
               gamma,
               optimizer,
-              entropy_coef)
+              entropy_coef,
+              gae_lambda)
     model = a3c.multi_actor_critic()
 
-    simulate(env, model, action_space)
+    simulate(env, model, env.action_space.n)
     env.close()
 
 
