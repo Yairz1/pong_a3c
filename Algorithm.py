@@ -4,11 +4,16 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from preprocess import state_process
+import sys
+
+
+def flush_print(str):
+    print(str, end="")
+    sys.stdout.flush()
 
 
 def policy(p, action_space):
     return np.random.choice(action_space, 1, p=p.detach().numpy().reshape(-1))[0]
-
 
 
 class A3C:
@@ -68,13 +73,15 @@ class A3C:
                 R = r_i + self.gamma * R
                 A = R - v_i
 
-                policy_loss += A * torch.log(P_i[0][a_i])
+                policy_loss += A.detach() * torch.log(P_i[0][a_i])
                 value_loss += 0.5 * A.pow(2)
                 log_P_i = torch.log(P_i)
                 H -= (log_P_i * P_i).sum(1, keepdim=True)
 
             self.optimizer.zero_grad()
             local_model.zero_grad()
-            (policy_loss + value_loss + H).backward()
+            J = policy_loss + value_loss + self.entropy_coef * H
+            J.backward()
+            flush_print(f'\r loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T / self.T_max)} %')
             self._async_step(local_model)
             if done: s_t = self.env.reset()

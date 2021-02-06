@@ -30,9 +30,10 @@ def train():
     action_space = 6
     global_model = Net(action_space)
     gamma = 0.99
-    optimizer = torch.optim.Adam(global_model.parameters(), lr=0.1)
+    optimizer = torch.optim.Adam(global_model.parameters(), lr=0.01)
+    global_model.share_memory()
     t_max = 5
-    T_max = 1000
+    T_max = 10000
     entropy_coef = 0.01
     a3c = A3C(env,
               policy,

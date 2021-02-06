@@ -34,3 +34,4 @@ class Net(nn.Module):
         actor = F.softmax(self.actions_fc(x), dim=1)
         critic = self.value_fc(x)
         return actor, critic
+
