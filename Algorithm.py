@@ -106,6 +106,6 @@ class A3C:
             local_model.zero_grad()
             J = policy_loss + 0.5 * value_loss
             J.backward()
-            flush_print(f'\r loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T / self.T_max)} %')
+            flush_print(f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T / self.T_max)} %')
             self._async_step(local_model)
             if done: s_t = self.env.reset()
