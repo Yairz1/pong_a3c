@@ -21,34 +21,33 @@ def policy(p, action_space):
 
 
 class A3C:
-    def __init__(self, env, policy, model, action_space, t_max, T_max, gamma, optimizer, entropy_coef, gae_lambda,
-                 num_processes):
-        self.global_model = model
-        self.action_space = action_space
-        self._lock = threading.Lock()
-        self.T = 0
-        self.env = env
-        self.policy = policy
-        self.t_max = t_max
-        self.T_max = T_max
-        self.gamma = gamma
-        self.optimizer = optimizer
-        self.entropy_coef = entropy_coef
-        self.gae_lambda = gae_lambda
-        self.num_processes = num_processes
-
-    def multi_actor_critic(self):
-        # for each thread, execute actor_critic
-        threads = []
-        for rank in range(0, self.num_processes):
-            t = threading.Thread(target=self.actor_critic)
-            t.start()
-            threads.append(t)
-        for t in threads:
-            t.join()
-
-        # self.actor_critic()
-        return copy.deepcopy(self.global_model)
+    def __init__(self, **args):
+        '''
+        :param env:
+        :param policy:
+        :param model:
+        :param action_space:
+        :param T:
+        :param lock:
+        :param t_max:
+        :param T_max:
+        :param gamma:
+        :param optimizer:
+        :param entropy_coef:
+        :param gae_lambda:
+        '''
+        self.global_model = args['model']
+        self.action_space = args['action_space']
+        self._lock = args['lock']
+        self.T = args['T']
+        self.env = args['env']
+        self.policy = args['policy']
+        self.t_max = args['t_max']
+        self.T_max = args['T_max']
+        self.gamma = args['gamma']
+        self.optimizer = args['optimizer']
+        self.entropy_coef = args['entropy_coef']
+        self.gae_lambda = args['gae_lambda']
 
     def _async_step(self, local_model):
         torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=50)
@@ -59,7 +58,6 @@ class A3C:
             global_p._grad = local_p.grad
         self.optimizer.step()
 
-
     def actor_critic(self):
         print("start")
         t = 0
@@ -67,8 +65,7 @@ class A3C:
         local_model = Net(self.env.action_space.n)
         while True:
             with self._lock:
-                if self.T >= self.T_max: break
-            # local_model = copy.deepcopy(self.global_model)
+                if self.T.value >= self.T_max: break
 
             local_model.load_state_dict(self.global_model.state_dict())
             t_start = t
@@ -81,7 +78,7 @@ class A3C:
                 s_t_1, r_t, done, _ = self.env.step(a_t)
                 t += 1
                 with self._lock:
-                    self.T += 1
+                    self.T.value += 1
                 episode_info.append((a_t, s_t, r_t, P_t))
                 values.append(v_t)
                 s_t = s_t_1
@@ -106,6 +103,7 @@ class A3C:
             local_model.zero_grad()
             J = policy_loss + 0.5 * value_loss
             J.backward()
-            flush_print(f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T / self.T_max)} %')
+            flush_print(
+                f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)} %')
             self._async_step(local_model)
             if done: s_t = self.env.reset()

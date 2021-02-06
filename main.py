@@ -1,8 +1,10 @@
+import os
+import threading
 import time
 import matplotlib.pyplot as plt
 import gym
 import torch
-
+import torch.multiprocessing as mp
 import my_optim
 from Algorithm import A3C
 from Network import Net
@@ -11,7 +13,13 @@ from preprocess import state_process
 from Algorithm import policy
 
 
+class counter:
+    def __init__(self):
+        self.value = 0
+
+
 def simulate(env, model, action_space):
+    model.eval()
     for i_episode in range(20):
         obs = env.reset()
         for t in range(400):
@@ -27,31 +35,43 @@ def simulate(env, model, action_space):
 
 
 def train():
+    mp.set_start_method('spawn')
+
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = ""
+    torch.manual_seed(1)
+
     env = create_atari_env('PongDeterministic-v4')
     global_model = Net(env.action_space.n)
     global_model.share_memory()
-    gamma = 0.99
+
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
-    t_max = 5
-    T_max = 100000
-    entropy_coef = 0.01
-    gae_lambda = 1
-    num_processes = 8
-    a3c = A3C(env,
-              policy,
-              global_model,
-              env.action_space.n,
-              t_max,
-              T_max,
-              gamma,
-              optimizer,
-              entropy_coef,
-              gae_lambda,
-              num_processes)
-    model = a3c.multi_actor_critic()
+    num_processes = 4
+    T = counter()
+    lock = mp.Lock()
+    args = {'env': env,
+            'policy': policy,
+            'model': global_model,
+            'action_space': env.action_space.n,
+            'T': T,
+            'lock': lock,
+            't_max': 5,
+            'T_max': 100000,
+            'gamma': 0.99,
+            'optimizer': optimizer,
+            'entropy_coef': 0.01,
+            'gae_lambda': 1}
+    processes = []
+    for rank in range(0, num_processes):
+        a3c = A3C(**args)
+        p = mp.Process(target=a3c.actor_critic)
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
 
-    simulate(env, model, env.action_space.n)
+    simulate(env, global_model, env.action_space.n)
     env.close()
 
 
