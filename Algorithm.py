@@ -3,6 +3,8 @@ import threading
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torch.multiprocessing as mp
+import threading
 
 from Network import Net
 from preprocess import state_process
@@ -19,7 +21,8 @@ def policy(p, action_space):
 
 
 class A3C:
-    def __init__(self, env, policy, model, action_space, t_max, T_max, gamma, optimizer, entropy_coef, gae_lambda):
+    def __init__(self, env, policy, model, action_space, t_max, T_max, gamma, optimizer, entropy_coef, gae_lambda,
+                 num_processes):
         self.global_model = model
         self.action_space = action_space
         self._lock = threading.Lock()
@@ -32,10 +35,19 @@ class A3C:
         self.optimizer = optimizer
         self.entropy_coef = entropy_coef
         self.gae_lambda = gae_lambda
+        self.num_processes = num_processes
 
     def multi_actor_critic(self):
         # for each thread, execute actor_critic
-        self.actor_critic()
+        threads = []
+        for rank in range(0, self.num_processes):
+            t = threading.Thread(target=self.actor_critic)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+
+        # self.actor_critic()
         return copy.deepcopy(self.global_model)
 
     def _async_step(self, local_model):
@@ -47,7 +59,9 @@ class A3C:
             global_p._grad = local_p.grad
         self.optimizer.step()
 
+
     def actor_critic(self):
+        print("start")
         t = 0
         s_t = self.env.reset()
         local_model = Net(self.env.action_space.n)

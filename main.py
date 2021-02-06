@@ -37,6 +37,7 @@ def train():
     T_max = 100000
     entropy_coef = 0.01
     gae_lambda = 1
+    num_processes = 8
     a3c = A3C(env,
               policy,
               global_model,
@@ -46,7 +47,8 @@ def train():
               gamma,
               optimizer,
               entropy_coef,
-              gae_lambda)
+              gae_lambda,
+              num_processes)
     model = a3c.multi_actor_critic()
 
     simulate(env, model, env.action_space.n)
