@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import gym
 import torch
 
+import my_optim
 from Algorithm import A3C
 from Network import Net
 from envs import create_atari_env
@@ -30,9 +31,10 @@ def train():
     global_model = Net(env.action_space.n)
     global_model.share_memory()
     gamma = 0.99
-    optimizer = torch.optim.Adam(global_model.parameters(), lr=0.01)
+    optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
+    optimizer.share_memory()
     t_max = 5
-    T_max = 10000
+    T_max = 100000
     entropy_coef = 0.01
     gae_lambda = 1
     a3c = A3C(env,

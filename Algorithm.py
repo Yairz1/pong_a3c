@@ -75,7 +75,6 @@ class A3C:
             values.append(R)
             policy_loss = 0
             value_loss = 0
-            H = 0
             gae = torch.zeros(1, 1)
             for i in reversed(range(len(episode_info))):
                 a_i, s_i, r_i, P_i = episode_info[i]
@@ -88,26 +87,10 @@ class A3C:
                 delta_t = r_i + self.gamma * values[i + 1] - values[i]
                 gae = gae * self.gamma * self.gae_lambda + delta_t
                 policy_loss = policy_loss - torch.log(P_i)[0][a_i] * gae.detach() - self.entropy_coef * H
-                # policy_loss += A.detach() * torch.log(P_i[0][a_i])
-                # value_loss += 0.5 * A.pow(2)
-                # log_P_i = torch.log(P_i)
-                # H -= (log_P_i * P_i).sum(1, keepdim=True)
-
-            # R = args.gamma * R + rewards[i]
-            # advantage = R - values[i]
-            # value_loss = value_loss + 0.5 * advantage.pow(2)
-            #
-            # # Generalized Advantage Estimation
-            # delta_t = rewards[i] + args.gamma * \
-            #     values[i + 1] - values[i]
-            # gae = gae * args.gamma * args.gae_lambda + delta_t
-            #
-            # policy_loss = policy_loss - \
-            #     log_probs[i] * gae.detach() - args.entropy_coef * entropies[i]
 
             self.optimizer.zero_grad()
             local_model.zero_grad()
-            J = policy_loss + value_loss
+            J = policy_loss + 0.5 * value_loss
             J.backward()
             flush_print(f'\r loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T / self.T_max)} %')
             self._async_step(local_model)
