@@ -59,13 +59,17 @@ class A3C:
             global_p._grad = local_p.grad
         self.optimizer.step()
 
-    def actor_critic(self):
+    def actor_critic(self, rank):
+        torch.manual_seed(1 + rank)
+
         env = create_atari_env(self.env)
+        env.seed(1 + rank)
 
         t = 0
-        s_t = env.reset()
         local_model = ActorCritic(env.observation_space.shape[0], env.action_space)
+        local_model.train()
         done = True
+        s_t = env.reset()
         while True:
 
             with self._lock:
@@ -85,24 +89,28 @@ class A3C:
             values = []
             total_reward = 0
             while t - t_start < self.t_max:
-                v_t, logit, (hx, cx) = local_model((s_t,(hx, cx)))
+                v_t, logit, (hx, cx) = local_model((s_t, (hx, cx)))
                 P_t = F.softmax(logit, dim=-1)
                 log_P_t = F.log_softmax(logit, dim=-1)
-                a_t = self.policy(P_t, self.action_space)
+                a_t = P_t.multinomial(num_samples=1).detach()
                 s_t_1, r_t, done, _ = env.step(a_t)
                 r_t = max(min(r_t, 1), -1)
                 total_reward += r_t
                 t += 1
                 with self._lock:
                     self.T.value += 1
-                episode_info.append((a_t, s_t, r_t, P_t,log_P_t))
+                episode_info.append((a_t, s_t, r_t, P_t, log_P_t))
                 values.append(v_t)
                 s_t = s_t_1
 
                 if done:
                     break
 
-            R = 0 if done else local_model((s_t,(hx, cx)))[0]
+            R = torch.zeros(1, 1)
+            if not done:
+                value, _, _ = local_model((s_t, (hx, cx)))
+                R = value.detach()
+
             values.append(R)
             policy_loss = 0
             value_loss = 0
@@ -120,7 +128,6 @@ class A3C:
                 policy_loss = policy_loss - log_P_i[0][a_i] * gae.detach() - self.entropy_coef * H
 
             self.optimizer.zero_grad()
-            local_model.zero_grad()
             J = policy_loss + 0.5 * value_loss
             J.backward()
             flush_print(

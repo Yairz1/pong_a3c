@@ -33,7 +33,7 @@ def simulate(env, model, action_space):
         for t in range(400):
             with torch.no_grad():
                 env.render()
-                v_t, logit, (hx, cx) = model((obs,(hx, cx)))
+                v_t, logit, (hx, cx) = model((obs, (hx, cx)))
                 P_t = F.softmax(logit, dim=-1)
 
                 action = policy(P_t, action_space)
@@ -43,7 +43,7 @@ def simulate(env, model, action_space):
                     print("Episode finished after {} timesteps".format(t + 1))
                     break
         AVG += G
-    print(AVG/20)
+    print(AVG / 20)
     env.close()
 
 
@@ -60,7 +60,7 @@ def train():
 
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
-    num_processes = 1
+    num_processes = 5
     T = mp.Value('i', 0)
     lock = mp.Lock()
     args = {'env': 'PongDeterministic-v4',
@@ -70,19 +70,19 @@ def train():
             'T': T,
             'lock': lock,
             't_max': 20,
-            'T_max': 100000*20,
+            'T_max': 100000 * 20,
             'gamma': 0.99,
             'optimizer': optimizer,
             'entropy_coef': 0.01,
             'gae_lambda': 1,
-            'seed':1}
+            'seed': 1}
     processes = []
     p = mp.Process(target=test, args=(num_processes, args, global_model, T))
     p.start()
     processes.append(p)
     for rank in range(0, num_processes):
         a3c = A3C(**args)
-        p = mp.Process(target=a3c.actor_critic)
+        p = mp.Process(target=a3c.actor_critic, args=(rank,))
         p.start()
         processes.append(p)
     for p in processes:
