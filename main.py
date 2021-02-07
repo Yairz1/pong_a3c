@@ -75,7 +75,9 @@ def train():
             'optimizer': optimizer,
             'entropy_coef': 0.01,
             'gae_lambda': 1,
-            'seed': 1}
+            'seed': 1,
+            'num_step': 10000 * 20,
+            'max_episode_length': 20}
     processes = []
     p = mp.Process(target=test, args=(num_processes, args, global_model, T))
     p.start()
