@@ -62,30 +62,42 @@ class A3C:
         t = 0
         s_t = self.env.reset()
         local_model = ActorCritic(self.env.observation_space.shape[0], self.env.action_space)
+        done = True
         while True:
 
             with self._lock:
                 if self.T.value >= self.T_max: break
 
+            if done:
+                cx = torch.zeros(1, 256)
+                hx = torch.zeros(1, 256)
+            else:
+                cx = cx.detach()
+                hx = hx.detach()
+
             local_model.load_state_dict(self.global_model.state_dict())
             t_start = t
-            done = False
+
             episode_info = []
             values = []
-            cx = torch.zeros(1, 256)
-            hx = torch.zeros(1, 256)
-            while not done and t - t_start < self.t_max:
+
+            while t - t_start < self.t_max:
                 v_t, logit, (hx, cx) = local_model((s_t,(hx, cx)))
                 P_t = F.softmax(logit, dim=-1)
                 log_P_t = F.log_softmax(logit, dim=-1)
                 a_t = self.policy(P_t, self.action_space)
                 s_t_1, r_t, done, _ = self.env.step(a_t)
+                r_t = max(min(r_t, 1), -1)
+
                 t += 1
                 with self._lock:
                     self.T.value += 1
                 episode_info.append((a_t, s_t, r_t, P_t,log_P_t))
                 values.append(v_t)
                 s_t = s_t_1
+
+                if done:
+                    break
 
             R = 0 if done else local_model((s_t,(hx, cx)))[0]
             values.append(R)
@@ -111,4 +123,5 @@ class A3C:
             flush_print(
                 f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)} %')
             self._async_step(local_model)
-            if done: s_t = self.env.reset()
+            if done:
+                s_t = self.env.reset()

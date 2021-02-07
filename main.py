@@ -21,10 +21,12 @@ class counter:
 
 def simulate(env, model, action_space):
     model.eval()
+    AVG = 0
     for i_episode in range(20):
         obs = env.reset()
         cx = torch.zeros(1, 256)
         hx = torch.zeros(1, 256)
+        G = 0
         for t in range(400):
             with torch.no_grad():
                 env.render()
@@ -33,9 +35,12 @@ def simulate(env, model, action_space):
 
                 action = policy(P_t, action_space)
                 obs, reward, done, info = env.step(action)
+                G += reward
                 if done:
                     print("Episode finished after {} timesteps".format(t + 1))
                     break
+        AVG += G
+    print(AVG/20)
     env.close()
 
 
@@ -61,8 +66,8 @@ def train():
             'action_space': env.action_space.n,
             'T': T,
             'lock': lock,
-            't_max': 5,
-            'T_max': 100000,
+            't_max': 20,
+            'T_max': 100000*20,
             'gamma': 0.99,
             'optimizer': optimizer,
             'entropy_coef': 0.01,
@@ -81,5 +86,5 @@ def train():
 
 
 if __name__ == '__main__':
-    # mp.set_start_method('spawn')
+    mp.set_start_method('spawn')
     train()
