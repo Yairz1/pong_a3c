@@ -7,7 +7,7 @@ import torch
 import torch.multiprocessing as mp
 import my_optim
 from Algorithm import A3C
-from Network import Net
+from Network import Net, ActorCritic
 from envs import create_atari_env
 from preprocess import state_process
 from Algorithm import policy
@@ -35,20 +35,20 @@ def simulate(env, model, action_space):
 
 
 def train():
-    mp.set_start_method('spawn')
-
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['CUDA_VISIBLE_DEVICES'] = ""
     torch.manual_seed(1)
 
     env = create_atari_env('PongDeterministic-v4')
-    global_model = Net(env.action_space.n)
+    # global_model = Net(env.action_space.n)
+    global_model = ActorCritic(env.observation_space.shape[0], env.action_space)
+
     global_model.share_memory()
 
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
     num_processes = 4
-    T = counter()
+    T = mp.Value('i', 0)
     lock = mp.Lock()
     args = {'env': env,
             'policy': policy,
@@ -76,4 +76,5 @@ def train():
 
 
 if __name__ == '__main__':
+    mp.set_start_method('spawn')
     train()

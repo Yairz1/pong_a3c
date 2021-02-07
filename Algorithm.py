@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.multiprocessing as mp
 import threading
 
-from Network import Net
+from Network import Net, ActorCritic
 from preprocess import state_process
 import sys
 
@@ -59,11 +59,11 @@ class A3C:
         self.optimizer.step()
 
     def actor_critic(self):
-        print("start")
         t = 0
         s_t = self.env.reset()
-        local_model = Net(self.env.action_space.n)
+        local_model = ActorCritic(self.env.observation_space.shape[0], self.env.action_space)
         while True:
+
             with self._lock:
                 if self.T.value >= self.T_max: break
 
@@ -72,32 +72,37 @@ class A3C:
             done = False
             episode_info = []
             values = []
+            cx = torch.zeros(1, 256)
+            hx = torch.zeros(1, 256)
             while not done and t - t_start < self.t_max:
-                P_t, v_t = local_model(state_process(s_t))
+                v_t, logit, (hx, cx) = local_model((s_t,(hx, cx)))
+                P_t = F.softmax(logit, dim=-1)
+                log_P_t = F.log_softmax(logit, dim=-1)
                 a_t = self.policy(P_t, self.action_space)
                 s_t_1, r_t, done, _ = self.env.step(a_t)
                 t += 1
                 with self._lock:
                     self.T.value += 1
-                episode_info.append((a_t, s_t, r_t, P_t))
+                episode_info.append((a_t, s_t, r_t, P_t,log_P_t))
                 values.append(v_t)
                 s_t = s_t_1
-            R = 0 if done else v_t
+
+            R = 0 if done else local_model((s_t,(hx, cx)))[0]
             values.append(R)
             policy_loss = 0
             value_loss = 0
             gae = torch.zeros(1, 1)
             for i in reversed(range(len(episode_info))):
-                a_i, s_i, r_i, P_i = episode_info[i]
+                a_i, s_i, r_i, P_i, log_P_i = episode_info[i]
                 R = r_i + self.gamma * R
                 A = R - values[i]
                 value_loss = value_loss + 0.5 * A.pow(2)
 
-                H = -(torch.log(P_i) * P_i).sum(1, keepdim=True)
+                H = -(log_P_i * P_i).sum(1, keepdim=True)
                 # Generalized Advantage Estimation
                 delta_t = r_i + self.gamma * values[i + 1] - values[i]
                 gae = gae * self.gamma * self.gae_lambda + delta_t
-                policy_loss = policy_loss - torch.log(P_i)[0][a_i] * gae.detach() - self.entropy_coef * H
+                policy_loss = policy_loss - log_P_i[0][a_i] * gae.detach() - self.entropy_coef * H
 
             self.optimizer.zero_grad()
             local_model.zero_grad()

@@ -2,6 +2,7 @@
 import cv2
 import gym
 import numpy as np
+import torch
 from gym.spaces import Box
 
 
@@ -46,11 +47,12 @@ class NormalizedEnv(gym.ObservationWrapper):
     def observation(self, observation):
         self.num_steps += 1
         self.state_mean = self.state_mean * self.alpha + \
-            observation.mean() * (1 - self.alpha)
+                          observation.mean() * (1 - self.alpha)
         self.state_std = self.state_std * self.alpha + \
-            observation.std() * (1 - self.alpha)
+                         observation.std() * (1 - self.alpha)
 
         unbiased_mean = self.state_mean / (1 - pow(self.alpha, self.num_steps))
         unbiased_std = self.state_std / (1 - pow(self.alpha, self.num_steps))
 
-        return (observation - unbiased_mean) / (unbiased_std + 1e-8)
+        obs = torch.FloatTensor((observation - unbiased_mean) / (unbiased_std + 1e-8))
+        return obs.unsqueeze(0)
