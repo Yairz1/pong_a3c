@@ -80,7 +80,7 @@ class A3C:
 
             episode_info = []
             values = []
-
+            total_reward = 0
             while t - t_start < self.t_max:
                 v_t, logit, (hx, cx) = local_model((s_t,(hx, cx)))
                 P_t = F.softmax(logit, dim=-1)
@@ -88,7 +88,7 @@ class A3C:
                 a_t = self.policy(P_t, self.action_space)
                 s_t_1, r_t, done, _ = self.env.step(a_t)
                 r_t = max(min(r_t, 1), -1)
-
+                total_reward += r_t
                 t += 1
                 with self._lock:
                     self.T.value += 1
@@ -121,7 +121,7 @@ class A3C:
             J = policy_loss + 0.5 * value_loss
             J.backward()
             flush_print(
-                f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)} %')
+                f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
             self._async_step(local_model)
             if done:
                 s_t = self.env.reset()

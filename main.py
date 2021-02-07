@@ -13,6 +13,8 @@ from preprocess import state_process
 from Algorithm import policy
 import torch.nn.functional as F
 
+from test import test
+
 
 class counter:
     def __init__(self):
@@ -57,7 +59,7 @@ def train():
 
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
-    num_processes = 10
+    num_processes = 3
     T = mp.Value('i', 0)
     lock = mp.Lock()
     args = {'env': env,
@@ -71,8 +73,12 @@ def train():
             'gamma': 0.99,
             'optimizer': optimizer,
             'entropy_coef': 0.01,
-            'gae_lambda': 1}
+            'gae_lambda': 1,
+            'seed':1}
     processes = []
+    p = mp.Process(target=test, args=(num_processes, args, global_model, T))
+    p.start()
+    processes.append(p)
     for rank in range(0, num_processes):
         a3c = A3C(**args)
         p = mp.Process(target=a3c.actor_critic)
