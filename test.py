@@ -9,6 +9,7 @@ from envs import create_atari_env
 
 
 def test(rank, args, shared_model, counter):
+
     torch.manual_seed(args['seed'] + rank)
 
     env = create_atari_env('PongDeterministic-v4')
@@ -45,7 +46,7 @@ def test(rank, args, shared_model, counter):
         action = prob.max(1, keepdim=True)[1].numpy()
 
         state, reward, done, _ = env.step(action[0, 0])
-        done = done or episode_length >= args['t_max']
+        done = done or episode_length >= args['T_max']
         reward_sum += reward
 
         # a quick hack to prevent the agent from stucking

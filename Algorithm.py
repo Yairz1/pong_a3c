@@ -7,6 +7,7 @@ import torch.multiprocessing as mp
 import threading
 
 from Network import Net, ActorCritic
+from envs import create_atari_env
 from preprocess import state_process
 import sys
 
@@ -59,9 +60,11 @@ class A3C:
         self.optimizer.step()
 
     def actor_critic(self):
+        env = create_atari_env(self.env)
+
         t = 0
-        s_t = self.env.reset()
-        local_model = ActorCritic(self.env.observation_space.shape[0], self.env.action_space)
+        s_t = env.reset()
+        local_model = ActorCritic(env.observation_space.shape[0], env.action_space)
         done = True
         while True:
 
@@ -86,7 +89,7 @@ class A3C:
                 P_t = F.softmax(logit, dim=-1)
                 log_P_t = F.log_softmax(logit, dim=-1)
                 a_t = self.policy(P_t, self.action_space)
-                s_t_1, r_t, done, _ = self.env.step(a_t)
+                s_t_1, r_t, done, _ = env.step(a_t)
                 r_t = max(min(r_t, 1), -1)
                 total_reward += r_t
                 t += 1
@@ -124,4 +127,4 @@ class A3C:
                 f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
             self._async_step(local_model)
             if done:
-                s_t = self.env.reset()
+                s_t = env.reset()

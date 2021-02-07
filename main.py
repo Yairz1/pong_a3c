@@ -22,6 +22,7 @@ class counter:
 
 
 def simulate(env, model, action_space):
+    env = create_atari_env(env)
     model.eval()
     AVG = 0
     for i_episode in range(20):
@@ -50,8 +51,8 @@ def train():
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['CUDA_VISIBLE_DEVICES'] = ""
     torch.manual_seed(1)
-
     env = create_atari_env('PongDeterministic-v4')
+
     # global_model = Net(env.action_space.n)
     global_model = ActorCritic(env.observation_space.shape[0], env.action_space)
 
@@ -59,13 +60,13 @@ def train():
 
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
-    num_processes = 3
+    num_processes = 1
     T = mp.Value('i', 0)
     lock = mp.Lock()
-    args = {'env': env,
+    args = {'env': 'PongDeterministic-v4',
             'policy': policy,
             'model': global_model,
-            'action_space': env.action_space.n,
+            'action_space': 6,
             'T': T,
             'lock': lock,
             't_max': 20,
@@ -87,8 +88,7 @@ def train():
     for p in processes:
         p.join()
 
-    simulate(env, global_model, env.action_space.n)
-    env.close()
+    simulate('PongDeterministic-v4', global_model, args['action_space'])
 
 
 if __name__ == '__main__':
