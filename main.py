@@ -11,6 +11,7 @@ from Network import Net, ActorCritic
 from envs import create_atari_env
 from preprocess import state_process
 from Algorithm import policy
+import torch.nn.functional as F
 
 
 class counter:
@@ -22,11 +23,15 @@ def simulate(env, model, action_space):
     model.eval()
     for i_episode in range(20):
         obs = env.reset()
+        cx = torch.zeros(1, 256)
+        hx = torch.zeros(1, 256)
         for t in range(400):
             with torch.no_grad():
                 env.render()
-                P_i, _ = model(state_process(obs))
-                action = policy(P_i, action_space)
+                v_t, logit, (hx, cx) = model((obs,(hx, cx)))
+                P_t = F.softmax(logit, dim=-1)
+
+                action = policy(P_t, action_space)
                 obs, reward, done, info = env.step(action)
                 if done:
                     print("Episode finished after {} timesteps".format(t + 1))
@@ -47,7 +52,7 @@ def train():
 
     optimizer = my_optim.SharedAdam(global_model.parameters(), lr=0.0001)
     optimizer.share_memory()
-    num_processes = 4
+    num_processes = 10
     T = mp.Value('i', 0)
     lock = mp.Lock()
     args = {'env': env,
@@ -76,5 +81,5 @@ def train():
 
 
 if __name__ == '__main__':
-    mp.set_start_method('spawn')
+    # mp.set_start_method('spawn')
     train()

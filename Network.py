@@ -10,8 +10,11 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4)
         self.bn1 = torch.nn.BatchNorm2d(num_features=16)
 
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2) # stride=2
         self.bn2 = torch.nn.BatchNorm2d(num_features=32)
+
+        # self.conv3 = nn.Conv2d(32, 32, kernel_size=4, stride=2)
+        # self.bn3 = torch.nn.BatchNorm2d(num_features=32)
 
         self.fc = nn.Linear(32 * 3 * 3, 256)
         self.value_fc = nn.Linear(256, 1)
@@ -35,7 +38,6 @@ class Net(nn.Module):
         actor = F.softmax(self.actions_fc(x), dim=1)
         critic = self.value_fc(x)
         return actor, critic
-
 
 
 
