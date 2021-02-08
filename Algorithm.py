@@ -22,7 +22,8 @@ def policy(p, action_space):
 
 
 class A3C:
-    def __init__(self, **args):
+    def __init__(self, global_model, action_space, lock, T, env, t_max, T_max, gamma, optimizer, entropy_coef,
+                 gae_lambda, seed, num_steps, max_episode_length):
         '''
         :param env:
         :param policy:
@@ -37,21 +38,21 @@ class A3C:
         :param entropy_coef:
         :param gae_lambda:
         '''
-        self.global_model = args['model']
-        self.action_space = args['action_space']
-        self._lock = args['lock']
-        self.T = args['T']
-        self.env = args['env']
-        self.policy = args['policy']
-        self.t_max = args['t_max']
-        self.T_max = args['T_max']
-        self.gamma = args['gamma']
-        self.optimizer = args['optimizer']
-        self.entropy_coef = args['entropy_coef']
-        self.gae_lambda = args['gae_lambda']
-        self.seed = args['seed']
-        self.num_steps = args['num_step']
-        self.max_episode_length = args['max_episode_length']
+        self.global_model = global_model
+        self.action_space = action_space
+        self._lock = lock
+        self.T = T
+        self.env = env
+        self.policy = policy
+        self.t_max = t_max
+        self.T_max = T_max
+        self.gamma = gamma
+        self.optimizer = optimizer
+        self.entropy_coef = entropy_coef
+        self.gae_lambda = gae_lambda
+        self.seed = seed
+        self.num_steps = num_steps
+        self.max_episode_length = max_episode_length
 
     def _async_step(self, local_model):
         torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=50)
@@ -69,7 +70,7 @@ class A3C:
                 return
             shared_param._grad = param.grad
 
-    def actor_critic(self,rank):
+    def actor_critic(self, rank):
         torch.manual_seed(self.seed + rank)
 
         env = create_atari_env(self.env)
@@ -83,7 +84,7 @@ class A3C:
         model.train()
 
         state = env.reset()
-        # state = torch.from_numpy(state)
+        state = torch.from_numpy(state)
         done = True
 
         episode_length = 0
@@ -104,7 +105,7 @@ class A3C:
 
             for step in range(self.num_steps):
                 episode_length += 1
-                value, logit, (hx, cx) = model((state,
+                value, logit, (hx, cx) = model((state.unsqueeze(0),
                                                 (hx, cx)))
                 prob = F.softmax(logit, dim=-1)
                 log_prob = F.log_softmax(logit, dim=-1)
@@ -125,7 +126,7 @@ class A3C:
                     episode_length = 0
                     state = env.reset()
 
-                # state = torch.from_numpy(state)
+                state = torch.from_numpy(state)
                 values.append(value)
                 log_probs.append(log_prob)
                 rewards.append(reward)

@@ -10,17 +10,16 @@ from envs import create_atari_env
 
 def test(rank, args, shared_model, counter):
 
-    torch.manual_seed(args['seed'] + rank)
+    torch.manual_seed(args.seed + rank)
 
     env = create_atari_env('PongDeterministic-v4')
-    env.seed(args['seed'] + rank)
+    env.seed(args.seed + rank)
 
     model = ActorCritic(env.observation_space.shape[0], env.action_space)
 
     model.eval()
 
     state = env.reset()
-    # state = torch.from_numpy(state)
     reward_sum = 0
     done = True
 
@@ -30,6 +29,7 @@ def test(rank, args, shared_model, counter):
     actions = deque(maxlen=100)
     episode_length = 0
     while True:
+        state = torch.from_numpy(state)
         episode_length += 1
         # Sync with the shared model
         if done:
@@ -41,12 +41,12 @@ def test(rank, args, shared_model, counter):
             hx = hx.detach()
 
         with torch.no_grad():
-            value, logit, (hx, cx) = model((state, (hx, cx)))
+            value, logit, (hx, cx) = model((state.unsqueeze(0), (hx, cx)))
         prob = F.softmax(logit, dim=-1)
         action = prob.max(1, keepdim=True)[1].numpy()
 
         state, reward, done, _ = env.step(action[0, 0])
-        done = done or episode_length >= args['T_max']
+        done = done or episode_length >= args.max_episode_length
         reward_sum += reward
 
         # a quick hack to prevent the agent from stucking

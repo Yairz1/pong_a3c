@@ -54,5 +54,6 @@ class NormalizedEnv(gym.ObservationWrapper):
         unbiased_mean = self.state_mean / (1 - pow(self.alpha, self.num_steps))
         unbiased_std = self.state_std / (1 - pow(self.alpha, self.num_steps))
 
+        return (observation - unbiased_mean) / (unbiased_std + 1e-8)
         obs = torch.from_numpy((observation - unbiased_mean) / (unbiased_std + 1e-8))
         return obs.unsqueeze(0)
