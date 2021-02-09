@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import my_optim
 from Algorithm import A3C
 from envs import create_atari_env
-from Network import ActorCritic, ActorCritic_linear
+from Network import ActorCritic, ActorCritic_linear, get_model
 from test import test
 import matplotlib.pyplot as plt
 
@@ -43,6 +43,8 @@ parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
 parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum.')
+parser.add_argument('--model', default='linear',
+                    help='default lstm.')
 
 
 def simulate(env, model, num_episode=20, max_episode=int(1.2e5)):
@@ -90,13 +92,11 @@ if __name__ == '__main__':
 
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['CUDA_VISIBLE_DEVICES'] = ""
-
     args = parser.parse_args()
-
+    model_constructor = get_model(args.model)
     torch.manual_seed(args.seed)
     env = create_atari_env(args.env_name)
-    shared_model = ActorCritic_linear(
-        env.observation_space.shape[0], env.action_space)
+    shared_model = model_constructor(env.observation_space.shape[0], env.action_space)
 
     # shared_model.load_state_dict(torch.load("Weights"))
     # shared_model.eval()
@@ -117,13 +117,14 @@ if __name__ == '__main__':
     time_lst = mp.Array('d', range(100))
     reward_lst = mp.Array('d', range(100))
 
-    p = mp.Process(target=test, args=(args.num_processes, args, shared_model, T, time_lst, reward_lst))
+    p = mp.Process(target=test,
+                   args=(args.num_processes, args, model_constructor, shared_model, T, time_lst, reward_lst))
     p.start()
     processes.append(p)
     ############
 
     for rank in range(0, args.num_processes):
-        a3c = A3C(shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma, optimizer,
+        a3c = A3C(model_constructor,shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma, optimizer,
                   args.entropy_coef,
                   args.gae_lambda, args.seed, args.max_episode_length)
         p = mp.Process(target=a3c.actor_critic, args=(rank,))

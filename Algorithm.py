@@ -22,7 +22,8 @@ def policy(p, action_space):
 
 
 class A3C:
-    def __init__(self, global_model, action_space, lock, T, env, t_max, T_max, gamma, optimizer, entropy_coef,
+    def __init__(self, model_constructor, global_model, action_space, lock, T, env, t_max, T_max, gamma, optimizer,
+                 entropy_coef,
                  gae_lambda, seed, max_episode_length):
         '''
         :param env:
@@ -53,8 +54,7 @@ class A3C:
         self.seed = seed
         self.t_max = t_max
         self.max_episode_length = max_episode_length
-
-
+        self.model_constructor = model_constructor
 
     def async_step(self, model):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 50)
@@ -71,7 +71,7 @@ class A3C:
         env = create_atari_env(self.env)
         env.seed(self.seed + rank)
 
-        model = ActorCritic_linear(env.observation_space.shape[0], env.action_space)
+        model = self.model_constructor(env.observation_space.shape[0], env.action_space)
         model.train()
 
         s_t = env.reset()
@@ -143,6 +143,7 @@ class A3C:
             self.optimizer.zero_grad()
             J = policy_loss + 0.5 * value_loss
             J.backward()
-            flush_print(f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
+            flush_print(
+                f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
 
             self.async_step(model)

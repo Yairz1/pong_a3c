@@ -4,6 +4,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def get_model(name):
+    name2model = {'lstm': ActorCritic, 'linear': ActorCritic_linear}
+    return name2model[name]
+
+
 class Net(nn.Module):
     def __init__(self, action_space):
         super(Net, self).__init__()

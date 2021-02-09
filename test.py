@@ -8,11 +8,11 @@ from Network import ActorCritic
 from envs import create_atari_env
 
 
-def test(rank, args, shared_model, T, time_list,reward_list):
+def test(rank, args, model_constructor, shared_model, T, time_list, reward_list):
     torch.manual_seed(args.seed + rank)
     env = create_atari_env('PongDeterministic-v4')
     env.seed(args.seed + rank)
-    model = ActorCritic(env.observation_space.shape[0], env.action_space)
+    model = model_constructor(env.observation_space.shape[0], env.action_space)
     model.eval()
     i = 0
     state = env.reset()
