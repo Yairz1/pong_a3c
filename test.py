@@ -8,7 +8,7 @@ from Network import ActorCritic
 from envs import create_atari_env
 
 
-def test(rank, args, shared_model, counter):
+def test(rank, args, shared_model, T):
 
     torch.manual_seed(args.seed + rank)
 
@@ -28,7 +28,7 @@ def test(rank, args, shared_model, counter):
     # a quick hack to prevent the agent from stucking
     actions = deque(maxlen=100)
     episode_length = 0
-    while True:
+    while T.value < args.T_max:
         state = torch.from_numpy(state)
         episode_length += 1
         # Sync with the shared model
@@ -58,7 +58,7 @@ def test(rank, args, shared_model, counter):
             print("Time {}, num steps {}, FPS {:.0f}, episode reward {}, episode length {}".format(
                 time.strftime("%Hh %Mm %Ss",
                               time.gmtime(time.time() - start_time)),
-                counter.value, counter.value / (time.time() - start_time),
+                T.value, T.value / (time.time() - start_time),
                 reward_sum, episode_length))
             reward_sum = 0
             episode_length = 0

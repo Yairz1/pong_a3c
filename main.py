@@ -31,9 +31,11 @@ parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
 parser.add_argument('--num-processes', type=int, default=10,
                     help='how many training processes to use (default: 4)')
-parser.add_argument('--num-steps', type=int, default=20,
+parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
-parser.add_argument('--max-episode-length', type=int, default=1500000*7,
+parser.add_argument('--max-episode-length', type=int, default=1.5e5,
+                    help='maximum length of an episode (default: 1000000)')
+parser.add_argument('--T-max', type=int, default=1e5,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
@@ -70,13 +72,10 @@ if __name__ == '__main__':
     p.start()
     processes.append(p)
     ############
-    t_max = -1
-    T_max = -1
 
-    ############
     for rank in range(0, args.num_processes):
-        a3c = A3C(shared_model, 6, lock, T, args.env_name, t_max, T_max, args.gamma, optimizer, args.entropy_coef,
-                 args.gae_lambda, args.seed, args.num_steps, args.max_episode_length)
+        a3c = A3C(shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma, optimizer, args.entropy_coef,
+                 args.gae_lambda, args.seed, args.max_episode_length)
         p = mp.Process(target=a3c.actor_critic, args=(rank,))
         p.start()
         processes.append(p)
