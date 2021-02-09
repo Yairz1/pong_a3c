@@ -54,14 +54,7 @@ class A3C:
         self.t_max = t_max
         self.max_episode_length = max_episode_length
 
-    # def _async_step(self, local_model):
-    #     torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=50)
-    #     for local_p, global_p in zip(local_model.parameters(),
-    #                                  self.global_model.parameters()):
-    #         if global_p.grad is not None:
-    #             return
-    #         global_p._grad = local_p.grad
-    #     self.optimizer.step()
+
 
     def async_step(self, model):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 50)
@@ -70,6 +63,7 @@ class A3C:
             if shared_param.grad is not None:
                 return
             shared_param._grad = param.grad
+        self.optimizer.step()
 
     def actor_critic(self, rank):
         torch.manual_seed(self.seed + rank)
@@ -152,4 +146,3 @@ class A3C:
             flush_print(f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
 
             self.async_step(model)
-            self.optimizer.step()
