@@ -37,7 +37,7 @@ parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=1.5e5,
                     help='maximum length of an episode (default: 1000000)')
-parser.add_argument('--T-max', type=int, default=1.5e6,
+parser.add_argument('--T-max', type=int, default=7e4,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
@@ -74,9 +74,9 @@ def plot_reward(time_lst, reward_lst):
     x = []
     y = []
     for i in range(len(time_lst[:])):
-        if time_lst[i] == i:
+        if time_lst[i] == i and i > 0:
             break
-        x.append(time_lst[i]/60)
+        x.append(time_lst[i] / 60)
         y.append(reward_lst[i])
     plt.plot(x, y)
     plt.xlabel("time (min)")
@@ -132,5 +132,5 @@ if __name__ == '__main__':
         p.join()
 
     torch.save(shared_model.state_dict(), "Weights")
-    simulate(env, shared_model, 20)
+    simulate(env, shared_model, 3)
     plot_reward(time_lst, reward_lst)
