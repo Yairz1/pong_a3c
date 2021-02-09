@@ -4,6 +4,7 @@ import os
 
 import torch
 import torch.multiprocessing as mp
+import torch.nn.functional as F
 
 import my_optim
 from Algorithm import A3C
@@ -30,18 +31,43 @@ parser.add_argument('--max-grad-norm', type=float, default=50,
                     help='max grad norm (default: 50)')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
-parser.add_argument('--num-processes', type=int, default=3,
+parser.add_argument('--num-processes', type=int, default=10,
                     help='how many training processes to use (default: 4)')
 parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=1.5e5,
                     help='maximum length of an episode (default: 1000000)')
-parser.add_argument('--T-max', type=int, default=1e5,
+parser.add_argument('--T-max', type=int, default=1.5e6,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
 parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum.')
+
+
+def simulate(env, model, num_episode=20, max_episode=int(1.2e5)):
+    model.eval()
+    AVG = 0
+    for i_episode in range(num_episode):
+        obs = env.reset()
+        obs = torch.from_numpy(obs)
+        cx = torch.zeros(1, 256)
+        hx = torch.zeros(1, 256)
+        G = 0
+        for t in range(max_episode):
+            with torch.no_grad():
+                env.render()
+                v_t, prob, (hx, cx) = model((obs.unsqueeze(0), (hx, cx)))
+                P_t = F.softmax(prob, dim=-1)
+                action = P_t.multinomial(num_samples=1).detach()
+                obs, reward, done, info = env.step(action)
+                obs = torch.from_numpy(obs)
+                G += reward
+                if done:
+                    break
+        AVG += G
+    print(AVG / num_episode)
+    env.close()
 
 
 def plot_reward(time_lst, reward_lst):
@@ -70,12 +96,17 @@ if __name__ == '__main__':
     env = create_atari_env(args.env_name)
     shared_model = ActorCritic(
         env.observation_space.shape[0], env.action_space)
+
+    # shared_model.load_state_dict(torch.load("Weights"))
+    # shared_model.eval()
+
     shared_model.share_memory()
 
     if args.no_shared:
         optimizer = None
     else:
         optimizer = my_optim.SharedRMSprop(shared_model.parameters(), lr=args.lr)
+        # optimizer = my_optim.SharedAdam(shared_model.parameters(), lr=args.lr)
         optimizer.share_memory()
 
     processes = []
@@ -88,6 +119,7 @@ if __name__ == '__main__':
     p = mp.Process(target=test, args=(args.num_processes, args, shared_model, T, time_lst, reward_lst))
     p.start()
     processes.append(p)
+    ############
 
     for rank in range(0, args.num_processes):
         a3c = A3C(shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma, optimizer,
@@ -99,4 +131,6 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
+    torch.save(shared_model.state_dict(), "Weights")
+    simulate(env, shared_model, 20)
     plot_reward(time_lst, reward_lst)

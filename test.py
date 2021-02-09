@@ -24,6 +24,7 @@ def test(rank, args, shared_model, T, time_list,reward_list):
     # a quick hack to prevent the agent from stucking
     actions = deque(maxlen=100)
     episode_length = 0
+    num_episod = 0
     while T.value < args.T_max:
         state = torch.from_numpy(state)
         episode_length += 1

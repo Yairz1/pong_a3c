@@ -10,19 +10,16 @@ class Net(nn.Module):
         self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4)
         self.bn1 = torch.nn.BatchNorm2d(num_features=16)
 
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2) # stride=2
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
         self.bn2 = torch.nn.BatchNorm2d(num_features=32)
-
-        # self.conv3 = nn.Conv2d(32, 32, kernel_size=4, stride=2)
-        # self.bn3 = torch.nn.BatchNorm2d(num_features=32)
 
         self.fc = nn.Linear(32 * 3 * 3, 256)
         self.value_fc = nn.Linear(256, 1)
         self.actions_fc = nn.Linear(256, action_space)
 
-    # x represents observation which is RGB image.
-    def forward(self, x):
-        x = self.conv1(x)
+    def forward(self, inputs):
+        inputs, (hx, cx) = inputs
+        x = self.conv1(inputs)
         x = F.relu(x)
         x = self.bn1(x)
 
@@ -34,11 +31,9 @@ class Net(nn.Module):
         x = self.fc(x)
         x = F.relu(x)
 
-        # Apply softmax as policy and fc as value function.
-        actor = F.softmax(self.actions_fc(x), dim=1)
+        actor = self.actions_fc(x)  # F.softmax(self.actions_fc(x), dim=1)
         critic = self.value_fc(x)
-        return actor, critic
-
+        return critic, actor, (hx, cx)
 
 
 def normalized_columns_initializer(weights, std=1.0):
@@ -63,7 +58,6 @@ def weights_init(m):
         w_bound = np.sqrt(6. / (fan_in + fan_out))
         m.weight.data.uniform_(-w_bound, w_bound)
         m.bias.data.fill_(0)
-
 
 
 class ActorCritic(torch.nn.Module):
