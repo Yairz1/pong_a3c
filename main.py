@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import my_optim
 from Algorithm import A3C
 from envs import create_atari_env
-from Network import ActorCritic
+from Network import ActorCritic, ActorCritic_linear
 from test import test
 import matplotlib.pyplot as plt
 
@@ -37,7 +37,7 @@ parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=1.5e5,
                     help='maximum length of an episode (default: 1000000)')
-parser.add_argument('--T-max', type=int, default=7e4,
+parser.add_argument('--T-max', type=int, default=1.8e6,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
@@ -81,6 +81,7 @@ def plot_reward(time_lst, reward_lst):
     plt.plot(x, y)
     plt.xlabel("time (min)")
     plt.ylabel("rewards")
+    plt.savefig('Graph.jpeg')
     plt.show()
 
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
 
     torch.manual_seed(args.seed)
     env = create_atari_env(args.env_name)
-    shared_model = ActorCritic(
+    shared_model = ActorCritic_linear(
         env.observation_space.shape[0], env.action_space)
 
     # shared_model.load_state_dict(torch.load("Weights"))

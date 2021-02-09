@@ -65,4 +65,4 @@ def test(rank, args, shared_model, T, time_list,reward_list):
             episode_length = 0
             actions.clear()
             state = env.reset()
-            time.sleep(10)
+            time.sleep(30)

@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torch.multiprocessing as mp
 import threading
 
-from Network import Net, ActorCritic
+from Network import Net, ActorCritic, ActorCritic_linear
 from envs import create_atari_env
 from preprocess import state_process
 import sys
@@ -77,7 +77,7 @@ class A3C:
         env = create_atari_env(self.env)
         env.seed(self.seed + rank)
 
-        model = ActorCritic(env.observation_space.shape[0], env.action_space)
+        model = ActorCritic_linear(env.observation_space.shape[0], env.action_space)
         model.train()
 
         s_t = env.reset()
