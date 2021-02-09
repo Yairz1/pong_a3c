@@ -8,17 +8,13 @@ from Network import ActorCritic
 from envs import create_atari_env
 
 
-def test(rank, args, shared_model, T):
-
+def test(rank, args, shared_model, T, time_list,reward_list):
     torch.manual_seed(args.seed + rank)
-
     env = create_atari_env('PongDeterministic-v4')
     env.seed(args.seed + rank)
-
     model = ActorCritic(env.observation_space.shape[0], env.action_space)
-
     model.eval()
-
+    i = 0
     state = env.reset()
     reward_sum = 0
     done = True
@@ -55,14 +51,17 @@ def test(rank, args, shared_model, T):
             done = True
 
         if done:
+            total_time = time.time() - start_time
             print("Time {}, num steps {}, FPS {:.0f}, episode reward {}, episode length {}".format(
-                time.strftime("%Hh %Mm %Ss",
-                              time.gmtime(time.time() - start_time)),
-                T.value, T.value / (time.time() - start_time),
+                time.strftime("%Hh %Mm %Ss", time.gmtime(total_time)),
+                T.value, T.value / total_time,
                 reward_sum, episode_length))
+            if i < 100:
+                time_list[i] = int(total_time)
+                reward_list[i] = reward_sum
+                i += 1
             reward_sum = 0
             episode_length = 0
             actions.clear()
             state = env.reset()
-            time.sleep(60)
-
+            time.sleep(30)
