@@ -1,15 +1,15 @@
 from __future__ import print_function
 import argparse
 import os
-
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 
-import my_optim
+
+from my_optim import get_optim
 from Algorithm import A3C
 from envs import create_atari_env
-from Network import ActorCritic, ActorCritic_linear, get_model
+from Network import get_model
 from test import test
 import matplotlib.pyplot as plt
 
@@ -37,14 +37,16 @@ parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=1.5e5,
                     help='maximum length of an episode (default: 1000000)')
-parser.add_argument('--T-max', type=int, default=1.8e6,
+parser.add_argument('--T-max', type=int, default=6e6,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
 parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum.')
-parser.add_argument('--model', default='linear',
+parser.add_argument('--model', default='original',
                     help='default lstm.')
+parser.add_argument('--optimization', default='adam',
+                    help='default adam.')
 
 
 def simulate(env, model, num_episode=20, max_episode=int(1.2e5)):
@@ -106,8 +108,8 @@ if __name__ == '__main__':
     if args.no_shared:
         optimizer = None
     else:
-        optimizer = my_optim.SharedRMSprop(shared_model.parameters(), lr=args.lr)
-        # optimizer = my_optim.SharedAdam(shared_model.parameters(), lr=args.lr)
+        opti_constructor = get_optim(args.optimization)
+        optimizer = opti_constructor(shared_model.parameters(), lr=args.lr)
         optimizer.share_memory()
 
     processes = []

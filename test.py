@@ -3,8 +3,6 @@ from collections import deque
 
 import torch
 import torch.nn.functional as F
-
-from Network import ActorCritic
 from envs import create_atari_env
 
 

@@ -1,7 +1,11 @@
 import math
-
 import torch
 import torch.optim as optim
+
+
+def get_optim(name):
+    name2model = {'adam': SharedAdam, 'rms': SharedRMSprop}
+    return name2model[name]
 
 
 class SharedAdam(optim.Adam):
@@ -101,7 +105,6 @@ class SharedRMSprop(optim.Optimizer):
             group.setdefault('momentum', 0)
             group.setdefault('centered', False)
 
-
     def share_memory(self):
         for group in self.param_groups:
             for p in group['params']:
@@ -191,7 +194,6 @@ class SharedRMSprop(optim.Optimizer):
         for group in self.param_groups:
             group.setdefault('momentum', 0)
             group.setdefault('centered', False)
-
 
     def share_memory(self):
         for group in self.param_groups:

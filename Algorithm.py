@@ -5,8 +5,6 @@ import torch
 import torch.nn.functional as F
 import torch.multiprocessing as mp
 import threading
-
-from Network import Net, ActorCritic, ActorCritic_linear
 from envs import create_atari_env
 from preprocess import state_process
 import sys
@@ -63,7 +61,6 @@ class A3C:
             if shared_param.grad is not None:
                 return
             shared_param._grad = param.grad
-        self.optimizer.step()
 
     def actor_critic(self, rank):
         torch.manual_seed(self.seed + rank)
@@ -147,3 +144,4 @@ class A3C:
                 f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
 
             self.async_step(model)
+            self.optimizer.step()
