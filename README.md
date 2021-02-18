@@ -3,6 +3,6 @@ Based on the following paper: [Asynchronous Methods for Deep Reinforcement Learn
 ## Comparsion among optimizers and two type of network architectures.<br>
 ![alt text](https://github.com/Yairz1/pong_a3c/blob/master/data/myplot.png?raw=true)
 ## Prerequisites
-gym~=0.18.0
-numpy~=1.18.1
-matplotlib~=3.2.2
+gym~=0.18.0<br>
+numpy~=1.18.1<br>
+matplotlib~=3.2.2<br>
