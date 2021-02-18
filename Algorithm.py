@@ -59,7 +59,7 @@ class A3C:
             shared_param._grad = param.grad
 
     def actor_critic(self, rank):
-        '''
+        """
         This method is an implementation of the multi-process actor critic algorithm.
         We use almost similar notation as the original paper used:
         1. s_t: state at time t
@@ -71,7 +71,7 @@ class A3C:
         6. model: the deep learning model that used as actor and critic.
         :param rank:
         :return: None. the result is a trained shared model which shared as pointer to the shared weights.
-        '''
+        """
         torch.manual_seed(self.seed + rank)
         # each process should have is own env instance.
         env = create_atari_env(self.env)
