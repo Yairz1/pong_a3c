@@ -61,7 +61,7 @@ class A3C:
     def actor_critic(self, rank):
         '''
         This method is an implementation of the multi-process actor critic algorithm.
-        We use the following anotations:
+        We use almost similar notation as the original paper used:
         1. s_t: state at time t
         2. v_t: value at time t
         3. r_t: reward at time t
@@ -85,6 +85,7 @@ class A3C:
         s_t = torch.from_numpy(s_t)
         done = True
         t = 0
+        # T is shared counter among all the processes.
         while self.T.value < self.T_max:
             # Sync with the shared model
             model.load_state_dict(self.global_model.state_dict())
@@ -108,6 +109,7 @@ class A3C:
                 v_t, prob, (hx, cx) = model((s_t.unsqueeze(0), (hx, cx)))
                 P_t = F.softmax(prob, dim=-1)
                 log_P_t = F.log_softmax(prob, dim=-1)
+                # the action is chosen in stochastic way.
                 a_t = P_t.multinomial(num_samples=1).detach()
                 s_t, r_t, done, _ = env.step(a_t.numpy())
                 r_t = max(min(r_t, 1), -1)
@@ -122,7 +124,6 @@ class A3C:
                 s_t = torch.from_numpy(s_t)
                 values.append(v_t)
                 episode_info.append((a_t, r_t, P_t, log_P_t))
-
                 if done:
                     break
 
@@ -131,28 +132,28 @@ class A3C:
                 value, _, _ = model((s_t.unsqueeze(0), (hx, cx)))
                 R = value.detach()
             values.append(R)
-
             policy_loss = 0
             value_loss = 0
             Advantage_GAE = torch.zeros(1, 1)
             for i in reversed(range(len(episode_info))):
                 a_i, r_i, P_i, log_P_i = episode_info[i]
-
                 R = self.gamma * R + r_i
                 Advantage = R - values[i]
                 value_loss = value_loss + 0.5 * Advantage.pow(2)
 
-                # Generalized Advantage Estimation
+                # Generalized Advantage Estimation (GAE)
                 entropy = -(log_P_i * P_i).sum(1, keepdim=True)
                 td_error = r_i + self.gamma * values[i + 1] - values[i]
                 Advantage_GAE = Advantage_GAE * self.gamma * self.gae_lambda + td_error
                 policy_loss = policy_loss - log_P_i[0][a_i] * Advantage_GAE.detach() - self.entropy_coef * entropy
 
             self.optimizer.zero_grad()
+            # J is our loss function.
             J = policy_loss + 0.5 * value_loss
             J.backward()
             flush_print(
                 f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
-
+            # preparing the weights s.t the shared weights will contain the local gradient.
             self.async_step(model)
+            #
             self.optimizer.step()
