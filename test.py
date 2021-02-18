@@ -8,6 +8,17 @@ import numpy as np
 
 
 def test(rank, args, model_constructor, shared_model, T, time_list, reward_list):
+    """
+    This method runs on a separate process every {x} seconds and print the reward.
+    :param rank:
+    :param args:
+    :param model_constructor:
+    :param shared_model:
+    :param T:
+    :param time_list:
+    :param reward_list:
+    :return:
+    """
     torch.manual_seed(args.seed + rank)
     env = create_atari_env('PongDeterministic-v4')
     env.seed(args.seed + rank)
@@ -19,11 +30,8 @@ def test(rank, args, model_constructor, shared_model, T, time_list, reward_list)
     done = True
 
     start_time = time.time()
-
-    # a quick hack to prevent the agent from stucking
     actions = deque(maxlen=100)
     episode_length = 0
-    num_episod = 0
     while T.value < args.T_max:
         state = torch.from_numpy(state)
         episode_length += 1
@@ -45,7 +53,6 @@ def test(rank, args, model_constructor, shared_model, T, time_list, reward_list)
         done = done or episode_length >= args.max_episode_length
         reward_sum += reward
 
-        # a quick hack to prevent the agent from stucking
         actions.append(action[0, 0])
         if actions.count(actions[0]) == actions.maxlen:
             done = True

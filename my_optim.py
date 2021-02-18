@@ -1,8 +1,10 @@
 import math
 import torch
 import torch.optim as optim
-
-
+"""
+Here we implement the origin RMSprop and ADAM optimizers.
+In addition, we share the statistics on a shared memory space.
+"""
 def get_optim(name):
     name2model = {'adam': SharedAdam, 'rms': SharedRMSprop}
     return name2model[name]
