@@ -5,13 +5,13 @@ import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 
-
 from my_optim import get_optim
 from Algorithm import A3C
 from envs import create_atari_env
 from Network import get_model
 from test import test
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Based on
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild
@@ -37,16 +37,16 @@ parser.add_argument('--t-max', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=1.5e5,
                     help='maximum length of an episode (default: 1000000)')
-parser.add_argument('--T-max', type=int, default=6e6,
+parser.add_argument('--T-max', type=int, default=8e6,
                     help='maximum length of an episode (default: 1000000)')
 parser.add_argument('--env-name', default='PongDeterministic-v4',
                     help='environment to train on (default: PongDeterministic-v4)')
 parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum.')
-parser.add_argument('--model', default='original',
-                    help='default lstm.')
-parser.add_argument('--optimization', default='adam',
-                    help='default adam.')
+parser.add_argument('--model', default='lstm',
+                    help='default lstm/linear/original.')
+parser.add_argument('--optimization', default='rms',
+                    help='default adam/rms.')
 
 
 def simulate(env, model, num_episode=20, max_episode=int(1.2e5)):
@@ -82,6 +82,8 @@ def plot_reward(time_lst, reward_lst):
             break
         x.append(time_lst[i] / 60)
         y.append(reward_lst[i])
+
+    # np.save('data-.npy', np.array([np.asarray(x), np.asarray(y)]))
     plt.plot(x, y)
     plt.xlabel("time (min)")
     plt.ylabel("rewards")
@@ -89,7 +91,57 @@ def plot_reward(time_lst, reward_lst):
     plt.show()
 
 
+def plot_all():
+
+    all_plot = np.asarray([np.load('data/data_adam_linear.npy'),
+                           np.load('data/data_adam_lstm.npy'),
+                           np.load('data/data_adam_original.npy'),
+                           np.load('data/data_rms_linear.npy'),
+                           np.load('data/data_rms_lstm.npy'),
+                           np.load('data/data_rms_original.npy')])
+
+    legends = np.asarray(['ADAM_Linear',
+                          'ADAM_LSTM',
+                          'ADAM_Original',
+                          'RMS_Linear',
+                          'RMS_LSTM',
+                          'RMS_Original'])
+
+    fig, axs = plt.subplots(2, 3)
+    plt.setp(axs, xlim=(-1, 18), ylim=(-22, 22))
+    a = 0
+    b = 0
+    for j in range(len(all_plot[:])):
+        time_lst = all_plot[j][0]
+        reward_lst = all_plot[j][1]
+        x = []
+        y = []
+
+        for i in range(len(time_lst[:])):
+            if time_lst[i] == i and i > 0:
+                break
+            x.append(time_lst[i] / 60)
+            y.append(reward_lst[i])
+        axs[a, b].plot(x, y)
+        axs[a, b].set_title(legends[j])
+
+        b += 1
+        if b == 3:
+            a += 1
+            b = 0
+
+    for ax in axs.flat:
+        ax.set(xlabel='time (min)', ylabel='rewards')
+
+    fig.suptitle('Pong A3C', fontsize=16)
+    fig.savefig('data/Graph.jpeg')
+    plt.show()
+
+
 if __name__ == '__main__':
+
+    # plot_all()
+
     mp.set_start_method('spawn')
 
     os.environ['OMP_NUM_THREADS'] = '1'
@@ -100,7 +152,7 @@ if __name__ == '__main__':
     env = create_atari_env(args.env_name)
     shared_model = model_constructor(env.observation_space.shape[0], env.action_space)
 
-    # shared_model.load_state_dict(torch.load("Weights"))
+    # shared_model.load_state_dict(torch.load("data/Weights"))
     # shared_model.eval()
 
     shared_model.share_memory()
@@ -126,7 +178,8 @@ if __name__ == '__main__':
     ############
 
     for rank in range(0, args.num_processes):
-        a3c = A3C(model_constructor,shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma, optimizer,
+        a3c = A3C(model_constructor, shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma,
+                  optimizer,
                   args.entropy_coef,
                   args.gae_lambda, args.seed, args.max_episode_length)
         p = mp.Process(target=a3c.actor_critic, args=(rank,))
@@ -135,6 +188,6 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
-    torch.save(shared_model.state_dict(), "Weights")
+    torch.save(shared_model.state_dict(), "data/Weights")
     simulate(env, shared_model, 3)
     plot_reward(time_lst, reward_lst)

@@ -8,6 +8,7 @@ import threading
 from envs import create_atari_env
 from preprocess import state_process
 import sys
+from random import random as rnd
 
 
 def flush_print(str):

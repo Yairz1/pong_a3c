@@ -4,6 +4,7 @@ from collections import deque
 import torch
 import torch.nn.functional as F
 from envs import create_atari_env
+import numpy as np
 
 
 def test(rank, args, model_constructor, shared_model, T, time_list, reward_list):
@@ -59,6 +60,7 @@ def test(rank, args, model_constructor, shared_model, T, time_list, reward_list)
                 time_list[i] = int(total_time)
                 reward_list[i] = reward_sum
                 i += 1
+                np.save('data_rms_lstm.npy', np.array([np.asarray(time_list), np.asarray(reward_list)]))
             reward_sum = 0
             episode_length = 0
             actions.clear()
