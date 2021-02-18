@@ -62,8 +62,8 @@ def plot_all():
     for ax in axs.flat:
         ax.set(xlabel='time (min)', ylabel='rewards')
 
-    fig.suptitle('Pong A3C', fontsize=16)
-    fig.savefig('data/Graph.jpeg')
+    # fig.title('Pong A3C', fontsize=16)
+    fig.savefig('data/comparison_plot.jpeg')
     plt.show()
 
 
