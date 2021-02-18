@@ -1,14 +1,9 @@
-import copy
-import threading
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.multiprocessing as mp
 import threading
 from envs import create_atari_env
-from preprocess import state_process
 import sys
-from random import random as rnd
 
 
 def flush_print(str):
