@@ -114,6 +114,7 @@ class A3C:
                 s_t, r_t, done, _ = env.step(a_t.numpy())
                 r_t = max(min(r_t, 1), -1)
 
+                # we choose to stop very long episodes
                 if t >= self.max_episode_length:
                     done = True
 
@@ -155,5 +156,4 @@ class A3C:
                 f'\r process id {threading.get_ident()} loss:{J.detach().numpy()[0][0]}, training process: {round(100 * self.T.value / self.T_max)}%')
             # preparing the weights s.t the shared weights will contain the local gradient.
             self.async_step(model)
-            #
             self.optimizer.step()
