@@ -9,10 +9,11 @@ from envs import create_atari_env
 from Network import get_model
 from test import test
 
-
 # Based on
 # https://github.com/pytorch/examples/tree/master/mnist_hogwild
 # Training settings
+from utils import simulate, plot_reward, plot_all
+
 parser = argparse.ArgumentParser(description='A3C')
 parser.add_argument('--lr', type=float, default=0.0001,
                     help='learning rate (default: 0.0001)')
@@ -44,21 +45,18 @@ parser.add_argument('--model', default='lstm',
                     help='default lstm/linear/original.')
 parser.add_argument('--optimization', default='rms',
                     help='default adam/rms.')
-
-
-
-
-
+parser.add_argument('--show-plot', default=True,
+                    help='default is to show the plots')
 
 if __name__ == '__main__':
+    args = parser.parse_args()
 
-    # plot_all()
+    if args.show_plot:
+        plot_all()
 
     mp.set_start_method('spawn')
-
     os.environ['OMP_NUM_THREADS'] = '1'
     os.environ['CUDA_VISIBLE_DEVICES'] = ""
-    args = parser.parse_args()
     model_constructor = get_model(args.model)
     torch.manual_seed(args.seed)
     env = create_atari_env(args.env_name)
@@ -77,7 +75,6 @@ if __name__ == '__main__':
         optimizer.share_memory()
 
     processes = []
-
     T = mp.Value('i', 0)
     lock = mp.Lock()
     time_lst = mp.Array('d', range(100))
@@ -87,7 +84,6 @@ if __name__ == '__main__':
                    args=(args.num_processes, args, model_constructor, shared_model, T, time_lst, reward_lst))
     p.start()
     processes.append(p)
-    ############
 
     for rank in range(0, args.num_processes):
         a3c = A3C(model_constructor, shared_model, 6, lock, T, args.env_name, args.t_max, args.T_max, args.gamma,
@@ -100,6 +96,6 @@ if __name__ == '__main__':
     for p in processes:
         p.join()
 
-    torch.save(shared_model.state_dict(), "data/Weights")
+    # torch.save(shared_model.state_dict(), "data/Weights")
     simulate(env, shared_model, 3)
     plot_reward(time_lst, reward_lst)
