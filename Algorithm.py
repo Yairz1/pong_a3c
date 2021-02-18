@@ -59,21 +59,36 @@ class A3C:
             shared_param._grad = param.grad
 
     def actor_critic(self, rank):
+        '''
+        This method is an implementation of the multi-process actor critic algorithm.
+        We use the following anotations:
+        1. s_t: state at time t
+        2. v_t: value at time t
+        3. r_t: reward at time t
+        4. p_t: action probability function at time t
+        5. episdoe_info: a list that gather all the relevant information for the current episode.
+           including (1)(2)(3)(4)
+        6. model: the deep learning model that used as actor and critic.
+        :param rank:
+        :return: None. the result is a trained shared model which shared as pointer to the shared weights.
+        '''
         torch.manual_seed(self.seed + rank)
-
+        # each process should have is own env instance.
         env = create_atari_env(self.env)
         env.seed(self.seed + rank)
-
+        # abstraction s.t we can construct several types of models.
         model = self.model_constructor(env.observation_space.shape[0], env.action_space)
         model.train()
 
         s_t = env.reset()
+        # since we are using pytorch we have to use torch tensors instead of numpy arrays
         s_t = torch.from_numpy(s_t)
         done = True
         t = 0
         while self.T.value < self.T_max:
             # Sync with the shared model
             model.load_state_dict(self.global_model.state_dict())
+            # hidden states for lstm
             if done:
                 cx = torch.zeros(1, 256)
                 hx = torch.zeros(1, 256)
